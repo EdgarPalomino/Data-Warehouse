@@ -36,19 +36,19 @@ class NaiveCSVWarehouse(DataWarehouse):
             reader = csv.DictReader(csv_warehouse, fieldnames=self.fields)
             for row in reader:
                 if row[key_column] == key_value:
-                    pass
+                    continue
                 else:
-                    rows.append(row)
+                    rows.append(row.values())
 
         with open(self.file_name, "w") as csv_warehouse:
-            writer = csv.DictWriter(csv_warehouse, fieldnames=self.fields)
+            writer = csv.writer(csv_warehouse)
             writer.writerows(rows)
 
     def query_data(self, key_column: str, keys: List[Any]) -> List[Dict[str, Any]]:
         rows = []
-        with open(self.file_name, "r") as csv_warehouse:
-            reader = csv.DictReader(csv_warehouse, fieldnames=self.fields)
-            for key in keys:
+        for key in keys:
+            with open(self.file_name, "r", newline="") as csv_warehouse:
+                reader = csv.DictReader(csv_warehouse, fieldnames=self.fields)
                 for row in reader:
                     if row[key_column] == key:
                         rows.append(row)
