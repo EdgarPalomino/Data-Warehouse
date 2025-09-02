@@ -44,7 +44,8 @@ def generate_fake_data(num_rows: int) -> List[List[str]]:
 def run_tests() -> None:
     # Initialize both implementations
     naive_warehouse = NaiveCSVWarehouse("naive_warehouse.csv")
-    my_warehouse = MyDataWarehouse(partition_size=1000, storage_dir="my_partitions")
+    my_warehouse = MyDataWarehouse("data_warehouse.csv")
+    # my_warehouse = MyDataWarehouse(partition_size=1000, storage_dir="my_partitions")
 
     # Generate 10,000 rows of data
     num_rows = 10_000
