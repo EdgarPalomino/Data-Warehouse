@@ -41,7 +41,7 @@ class NaiveCSVWarehouse(DataWarehouse):
                     rows.append(row.values())
 
         with open(self.file_name, "w") as csv_warehouse:
-            writer = csv.writer(csv_warehouse)
+            writer = csv.DictWriter(csv_warehouse, fieldnames=self.fields)
             writer.writerows(rows)
 
     def query_data(self, key_column: str, keys: List[Any]) -> List[Dict[str, Any]]:
