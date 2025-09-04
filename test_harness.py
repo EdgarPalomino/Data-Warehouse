@@ -4,6 +4,7 @@ from typing import Callable, Any, Tuple, List
 from faker import Faker
 from csv_warehouse import NaiveCSVWarehouse
 from my_data_warehouse import MyDataWarehouse
+import sys
 
 
 def measure_time(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Tuple[Any, float]:
@@ -61,16 +62,24 @@ def run_tests() -> None:
         avg_insert_time = total_insert_time / num_rows
         print(f"{name}: Inserted {num_rows} rows in {total_insert_time:.6f} seconds (avg: {avg_insert_time:.6f} seconds per call)")
 
+
+
+    # print(my_warehouse.query_data("id", ["1"]));
+    # sys.exit(0)
+
     # Randomly Update 100 Rows
-    print("\nTesting Update Operations...")
-    update_indices = random.sample(range(num_rows), 100)
-    updated_data = [{"id": str(i + 1), "name": f"Updated-{i + 1}", "address": f"Updated-{i + 1}", "email": f"Updated-{i + 1}"} for i in update_indices]
-    for warehouse, name in [(naive_warehouse, "NaiveCSVWarehouse"), (my_warehouse, "MyDataWarehouse")]:
-        _, total_update_time = measure_time(
-            lambda: [warehouse.update_data("id", row["id"], row) for row in updated_data]
-        )
-        avg_update_time = total_update_time / 100
-        print(f"{name}: Updated 100 rows in {total_update_time:.6f} seconds (avg: {avg_update_time:.6f} seconds per call)")
+    # print("\nTesting Update Operations...")
+    # update_indices = random.sample(range(num_rows), 100)
+    # updated_data = [{"id": str(i + 1), "name": f"Updated-{i + 1}", "address": f"Updated-{i + 1}", "email": f"Updated-{i + 1}"} for i in update_indices]
+    # for warehouse, name in [(naive_warehouse, "NaiveCSVWarehouse"), (my_warehouse, "MyDataWarehouse")]:
+    #     _, total_update_time = measure_time(
+    #         lambda: [warehouse.update_data("id", row["id"], row) for row in updated_data]
+    #     )
+    #     avg_update_time = total_update_time / 100
+    #     print(f"{name}: Updated 100 rows in {total_update_time:.6f} seconds (avg: {avg_update_time:.6f} seconds per call)")
+
+
+
 
     # Random Queries
     print("\nTesting Query Operations...")
