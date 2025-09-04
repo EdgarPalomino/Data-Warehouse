@@ -3,100 +3,210 @@ from data_warehouse import DataWarehouse
 import csv
 import re
 
+
 class MyDataWarehouse(DataWarehouse):
     def __init__(self, file_name: str):
-        self.file_name = file_name
-        self.fields = ["id", "name", "state", "address", "email"]
-
-    # def _extract_state(self, address: str) -> str:
-    #     state_pattern = re.compile(r',\s*([A-Z]{2})\s+(\d{5})')
-    #     match = state_pattern.search(address)
-    #     if match:
-    #         return match.group(2)
-    #     return ""
-
+        self.file_name = file_name  # Index file storing id -> partition mapping
+        self.fields = ["id", "name", "address", "email"]
+        self.index_fields = ["id", "partition"]
+        
+    def get_zip_first_digit(self, address: str) -> str:
+        """Extract first digit of ZIP code from address."""
+        # Look for 5-digit ZIP code in address
+        zip_match = re.search(r'\b(\d{5})\b', address)
+        if zip_match:
+            return zip_match.group(1)[0]  # Return first digit of ZIP
+        return "X"  # Default partition for invalid ZIP
+    
     def add_data(self, data: Dict[str, Any]) -> None:
-        # if not self.fields:
-        #     self.fields = list(data.keys())
-
-        with open(self.file_name, "a") as csv_warehouse:
-            writer = csv.writer(csv_warehouse)
-            # replace new line in data values with '\n' to keep csv format intact
-            converted_values = [str(value).replace("\n", "\\n") for value in data.values()]
-
-
-            converted_values = []
-            state = "";
-            i = 0
-            id1 = "";
-            zip = "";
-            for value in data.values():
-                if i == 0:
-                    id1 = str(value)
-
-                if i == 2:
-                    tmp = str(value).replace("\n", "\\n")
-                    # print(tmp[-5])
-                    converted_values.append(tmp[-5])
-                    state = tmp[-5]
-                    
-                    converted_values.append(tmp)
-                else:
-                    converted_values.append(value)
-                i += 1
-
-                filename = state+".csv"
-            with open(filename, "a") as state_csv:
-                state_writer = csv.writer(state_csv)
-                state_writer.writerow(converted_values)
-
-
-
-
-
-            meta = [ id1, state ]
-            writer.writerow(meta)
-
-    def update_data(self, key_column: str, key_value: Any, updated_data: Dict[str, Any]) -> None:
-        rows = []
-        with open(self.file_name, "r") as csv_warehouse:
-            reader = csv.DictReader(csv_warehouse, fieldnames=self.fields)
-            for row in reader:
-                if row[key_column] == key_value:
-                    rows.append(updated_data)
-                else:
-                    rows.append(row)
-
-        with open(self.file_name, "w") as csv_warehouse:
-            writer = csv.DictWriter(csv_warehouse, fieldnames=self.fields)
-            writer.writerows(rows)
-            
-    def delete_data(self, key_column: str, key_value: Any) -> None:
-        rows = []
-        with open(self.file_name, "r") as csv_warehouse:
-            reader = csv.DictReader(csv_warehouse, fieldnames=self.fields)
-            for row in reader:
-                if row[key_column] == key_value:
-                    continue
-                else:
-                    rows.append(row.values())
-
-        with open(self.file_name, "w") as csv_warehouse:
-            writer = csv.writer(csv_warehouse)
-            writer.writerows(rows)
-
+        # Get partition based on first digit of ZIP code
+        partition = self.get_zip_first_digit(data.get("address", ""))
+        partition_file = f"{partition}.csv"
+        
+        # Write full data to partition file
+        with open(partition_file, "a", newline="") as f:
+            writer = csv.writer(f)
+            # Clean newlines to maintain CSV format
+            row = [
+                data.get("id", ""),
+                data.get("name", ""),
+                str(data.get("address", "")).replace("\n", "\\n"),
+                data.get("email", "")
+            ]
+            writer.writerow(row)
+        
+        # Write id -> partition mapping to index file
+        with open(self.file_name, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([data.get("id"), partition])
+    
     def query_data(self, key_column: str, keys: List[Any]) -> List[Dict[str, Any]]:
-        rows = []
-        for key in keys:
-            with open(self.file_name, "r", newline="") as csv_warehouse:
-                reader = csv.DictReader(csv_warehouse, fieldnames=self.fields)
+        results = []
+        keys_set = set(str(k) for k in keys)  # Convert to set for O(1) lookup
+        
+        if key_column == "id":
+            # Use index to find partitions for each ID
+            partitions_to_check = {}
+            with open(self.file_name, "r", newline="") as f:
+                reader = csv.reader(f)
                 for row in reader:
-                    if row[key_column] == key:
-                        # print(row['name'])
-                        name = row['name'] + ".csv"
-                        with open(name, "r") as state_csv:
-                            state_reader = csv.DictReader(state_csv, fieldnames=self.fields)
-                            for state_row in state_reader:
-                                if state_row[key_column] == key:
-                                    rows.append(state_row)
-        return rows
+                    if len(row) >= 2 and row[0] in keys_set:
+                        id_val = row[0]
+                        partition = row[1]
+                        if partition not in partitions_to_check:
+                            partitions_to_check[partition] = set()
+                        partitions_to_check[partition].add(id_val)
+            
+            # Query each relevant partition
+            for partition, ids in partitions_to_check.items():
+                partition_file = f"{partition}.csv"
+                try:
+                    with open(partition_file, "r", newline="") as f:
+                        reader = csv.reader(f)
+                        for row in reader:
+                            if len(row) >= 4 and row[0] in ids:
+                                results.append({
+                                    "id": row[0],
+                                    "name": row[1],
+                                    "address": row[2].replace("\\n", "\n"),
+                                    "email": row[3]
+                                })
+                except FileNotFoundError:
+                    continue
+        else:
+            # For non-id queries, check all partition files
+            import os
+            for file in os.listdir("."):
+                if file.endswith(".csv") and file != self.file_name:
+                    try:
+                        with open(file, "r", newline="") as f:
+                            reader = csv.reader(f)
+                            for row in reader:
+                                if len(row) >= 4:
+                                    record = {
+                                        "id": row[0],
+                                        "name": row[1],
+                                        "address": row[2].replace("\\n", "\n"),
+                                        "email": row[3]
+                                    }
+                                    if record.get(key_column) in keys_set:
+                                        results.append(record)
+                    except FileNotFoundError:
+                        continue
+        
+        return results
+    
+    def update_data(self, key_column: str, key_value: Any, updated_data: Dict[str, Any]) -> None:
+        key_value = str(key_value)
+        
+        if key_column == "id":
+            # Find partition from index
+            old_partition = None
+            with open(self.file_name, "r", newline="") as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if len(row) >= 2 and row[0] == key_value:
+                        old_partition = row[1]
+                        break
+            
+            if old_partition:
+                # Update in partition file
+                old_file = f"{old_partition}.csv"
+                rows = []
+                found = False
+                try:
+                    with open(old_file, "r", newline="") as f:
+                        reader = csv.reader(f)
+                        for row in reader:
+                            if len(row) >= 4 and row[0] == key_value:
+                                # Update this row
+                                rows.append([
+                                    updated_data.get("id", row[0]),
+                                    updated_data.get("name", row[1]),
+                                    str(updated_data.get("address", row[2])).replace("\n", "\\n"),
+                                    updated_data.get("email", row[3])
+                                ])
+                                found = True
+                            else:
+                                rows.append(row)
+                    
+                    if found:
+                        with open(old_file, "w", newline="") as f:
+                            writer = csv.writer(f)
+                            writer.writerows(rows)
+                        
+                        # Check if partition needs to change
+                        new_partition = self.get_zip_first_digit(updated_data.get("address", ""))
+                        if new_partition != old_partition:
+                            # Move to new partition
+                            self.delete_data("id", key_value)
+                            self.add_data(updated_data)
+                except FileNotFoundError:
+                    pass
+    
+    def delete_data(self, key_column: str, key_value: Any) -> None:
+        key_value = str(key_value)
+        
+        if key_column == "id":
+            # Find partition from index
+            partition = None
+            index_rows = []
+            with open(self.file_name, "r", newline="") as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if len(row) >= 2:
+                        if row[0] == key_value:
+                            partition = row[1]
+                        else:
+                            index_rows.append(row)
+            
+            # Update index file
+            with open(self.file_name, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerows(index_rows)
+            
+            # Delete from partition file
+            if partition:
+                partition_file = f"{partition}.csv"
+                try:
+                    rows = []
+                    with open(partition_file, "r", newline="") as f:
+                        reader = csv.reader(f)
+                        for row in reader:
+                            if len(row) >= 4 and row[0] != key_value:
+                                rows.append(row)
+                    
+                    with open(partition_file, "w", newline="") as f:
+                        writer = csv.writer(f)
+                        writer.writerows(rows)
+                except FileNotFoundError:
+                    pass
+        else:
+            # For non-id deletes, check all partition files
+            import os
+            for file in os.listdir("."):
+                if file.endswith(".csv") and file != self.file_name:
+                    try:
+                        rows = []
+                        deleted = False
+                        with open(file, "r", newline="") as f:
+                            reader = csv.reader(f)
+                            for row in reader:
+                                if len(row) >= 4:
+                                    record = {
+                                        "id": row[0],
+                                        "name": row[1], 
+                                        "address": row[2],
+                                        "email": row[3]
+                                    }
+                                    if record.get(key_column) != key_value:
+                                        rows.append(row)
+                                    else:
+                                        deleted = True
+                        
+                        if deleted:
+                            with open(file, "w", newline="") as f:
+                                writer = csv.writer(f)
+                                writer.writerows(rows)
+                    except FileNotFoundError:
+                        continue

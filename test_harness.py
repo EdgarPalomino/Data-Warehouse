@@ -68,15 +68,15 @@ def run_tests() -> None:
     # sys.exit(0)
 
     # Randomly Update 100 Rows
-    # print("\nTesting Update Operations...")
-    # update_indices = random.sample(range(num_rows), 100)
-    # updated_data = [{"id": str(i + 1), "name": f"Updated-{i + 1}", "address": f"Updated-{i + 1}", "email": f"Updated-{i + 1}"} for i in update_indices]
-    # for warehouse, name in [(naive_warehouse, "NaiveCSVWarehouse"), (my_warehouse, "MyDataWarehouse")]:
-    #     _, total_update_time = measure_time(
-    #         lambda: [warehouse.update_data("id", row["id"], row) for row in updated_data]
-    #     )
-    #     avg_update_time = total_update_time / 100
-    #     print(f"{name}: Updated 100 rows in {total_update_time:.6f} seconds (avg: {avg_update_time:.6f} seconds per call)")
+    print("\nTesting Update Operations...")
+    update_indices = random.sample(range(num_rows), 100)
+    updated_data = [{"id": str(i + 1), "name": f"Updated-{i + 1}", "address": f"Updated-{i + 1}", "email": f"Updated-{i + 1}"} for i in update_indices]
+    for warehouse, name in [(naive_warehouse, "NaiveCSVWarehouse"), (my_warehouse, "MyDataWarehouse")]:
+        _, total_update_time = measure_time(
+            lambda: [warehouse.update_data("id", row["id"], row) for row in updated_data]
+        )
+        avg_update_time = total_update_time / 100
+        print(f"{name}: Updated 100 rows in {total_update_time:.6f} seconds (avg: {avg_update_time:.6f} seconds per call)")
 
 
 

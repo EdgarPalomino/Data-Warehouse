@@ -38,7 +38,7 @@ class NaiveCSVWarehouse(DataWarehouse):
                 if row[key_column] == key_value:
                     continue
                 else:
-                    rows.append(row.values())
+                    rows.append(row)
 
         with open(self.file_name, "w") as csv_warehouse:
             writer = csv.DictWriter(csv_warehouse, fieldnames=self.fields)
