@@ -4,7 +4,6 @@ from typing import Callable, Any, Tuple, List
 from faker import Faker
 from csv_warehouse import NaiveCSVWarehouse
 from my_data_warehouse import MyDataWarehouse
-import sys
 
 
 def measure_time(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Tuple[Any, float]:
@@ -45,8 +44,8 @@ def generate_fake_data(num_rows: int) -> List[List[str]]:
 def run_tests() -> None:
     # Initialize both implementations
     naive_warehouse = NaiveCSVWarehouse("naive_warehouse.csv")
-    my_warehouse = MyDataWarehouse("data_warehouse.csv")
     # my_warehouse = MyDataWarehouse(partition_size=1000, storage_dir="my_partitions")
+    my_warehouse = MyDataWarehouse("warehouse.csv")
 
     # Generate 10,000 rows of data
     num_rows = 10_000
@@ -62,11 +61,6 @@ def run_tests() -> None:
         avg_insert_time = total_insert_time / num_rows
         print(f"{name}: Inserted {num_rows} rows in {total_insert_time:.6f} seconds (avg: {avg_insert_time:.6f} seconds per call)")
 
-
-
-    # print(my_warehouse.query_data("id", ["1"]));
-    # sys.exit(0)
-
     # Randomly Update 100 Rows
     print("\nTesting Update Operations...")
     update_indices = random.sample(range(num_rows), 100)
@@ -77,9 +71,6 @@ def run_tests() -> None:
         )
         avg_update_time = total_update_time / 100
         print(f"{name}: Updated 100 rows in {total_update_time:.6f} seconds (avg: {avg_update_time:.6f} seconds per call)")
-
-
-
 
     # Random Queries
     print("\nTesting Query Operations...")
