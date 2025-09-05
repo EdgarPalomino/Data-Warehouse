@@ -3,8 +3,34 @@ from data_warehouse import DataWarehouse
 import csv
 import re
 
-
 class MyDataWarehouse(DataWarehouse):
+    """
+    Design Overview:
+    This warehouse partitions data across multiple CSV files based on 
+    the first digit of ZIP codes extracted from addresses.
+    
+    Partitioning Strategy:
+    - Data is distributed across 11 partition files (0.csv through 9.csv, plus x.csv)
+    - Partition based on first digit of 5-digit ZIP code in address field
+    - Records with invalid/missing ZIP codes go to 'x.csv' partition
+    - This achieves roughly even distribution assuming ZIP codes are geographically diverse
+    
+    Index Design:
+    - Maintains a separate index file mapping: id -> partition
+    - Index enables O(1) partition lookup for ID-based operations
+    - Avoids scanning all partitions for ID queries
+
+    Performance: 
+    - Add: O(1) - Simple append to partition and index
+    - Query by ID: O(k) where k is number of IDs (uses index)
+    - Query by other: O(n) where n is total records (full scan)
+    - Update by ID: O(m) where m is partition size
+    - Delete by ID: O(m) where m is partition size
+
+    Other stuff we discussed:
+    - Cache frequently accessed partitions or index entries to reduce file I/O operations
+    """
+    
     def __init__(self, file_name: str):
         self.file_name = file_name  # Index file storing id -> partition mapping
         self.fields = ["id", "name", "address", "email"]
@@ -16,7 +42,7 @@ class MyDataWarehouse(DataWarehouse):
         zip_match = re.search(r'\b(\d{5})\b', address)
         if zip_match:
             return zip_match.group(1)[0]  # Return first digit of ZIP
-        return "X"  # Default partition for invalid ZIP
+        return "x"  # Default partition for invalid ZIP
     
     def add_data(self, data: Dict[str, Any]) -> None:
         # Get partition based on first digit of ZIP code
@@ -93,7 +119,7 @@ class MyDataWarehouse(DataWarehouse):
                                         results.append(record)
                     except FileNotFoundError:
                         continue
-        
+
         return results
     
     def update_data(self, key_column: str, key_value: Any, updated_data: Dict[str, Any]) -> None:

@@ -60,7 +60,7 @@ def run_tests() -> None:
         )
         avg_insert_time = total_insert_time / num_rows
         print(f"{name}: Inserted {num_rows} rows in {total_insert_time:.6f} seconds (avg: {avg_insert_time:.6f} seconds per call)")
-
+    
     # Randomly Update 100 Rows
     print("\nTesting Update Operations...")
     update_indices = random.sample(range(num_rows), 100)
@@ -71,7 +71,7 @@ def run_tests() -> None:
         )
         avg_update_time = total_update_time / 100
         print(f"{name}: Updated 100 rows in {total_update_time:.6f} seconds (avg: {avg_update_time:.6f} seconds per call)")
-
+    
     # Random Queries
     print("\nTesting Query Operations...")
     query_keys = [[str(random.randint(1, num_rows * 2)) for _ in range(i)] for i in range(100)]  # Some keys will not exist

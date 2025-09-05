@@ -1,0 +1,1 @@
+Note: `MyDataWarehouse()` is called differently than provided default, see test_harness.py

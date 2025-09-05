@@ -47,7 +47,7 @@ class NaiveCSVWarehouse(DataWarehouse):
     def query_data(self, key_column: str, keys: List[Any]) -> List[Dict[str, Any]]:
         rows = []
         for key in keys:
-            with open(self.file_name, "r", newline="") as csv_warehouse:
+            with open(self.file_name, "r") as csv_warehouse:
                 reader = csv.DictReader(csv_warehouse, fieldnames=self.fields)
                 for row in reader:
                     if row[key_column] == key:
